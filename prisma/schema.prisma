@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id            String      @id @default(cuid())
+  domain        String      // npr. "marcopolosport.com", "ponta.com.hr", "oly-bot"
+  client        String      // npr. "Marko Polo Sport", "Camp Ponta"
+  techStack     String      // npr. "Astro, Payload CMS", "Next.js"
+  hosting       String      @default("VPS") // "VPS" ili "TOTOHOST"
+  isVps         Boolean     @default(false)
+  currentStatus String      // "Joomla -> Astro/Payload migracija. Test aktivan na VPS."
+  stage         String      @default("IN_PROGRESS") // BACKLOG, IN_PROGRESS, WAITING_VPS, PRODUCTION, MAINTENANCE
+  priority      String      @default("NORMAL")      // URGENT, HIGH, NORMAL, LOW
+  progress      Int         @default(0)             // 0 - 100 %
+  price         Float?      // npr. 550.00
+  isPaid        Boolean     @default(false)         // PLAĆENO (true) ili NIJE PLAĆENO (false)
+  docUrl        String?     // Link na Google Doc / Drive specifikaciju
+  devDevice     String      @default("WORKSTATION") // LAPTOP, WORKSTATION
+  hasGitBackup  Boolean     @default(true)
+  hasCicd       Boolean     @default(false)         // Webhook s Coolifyjem
+  notes         String?     // Markdown/tekst za sve tehničke detalje, portove, Coolify UUID, linkove
+  isArchived    Boolean     @default(false)
+  timeLogs      TimeLog[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model TimeLog {
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  hours       Float       // decimalni sati, npr. 1.5
+  description String?     // npr. "Konfiguracija Nginx proxyja i SSL certifikata"
+  createdAt   DateTime    @default(now())
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}

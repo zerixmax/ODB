@@ -1,0 +1,10 @@
+{
+  "name": "odb-dashboard",
+  "version": "2.1.0",
+  "title": "OleaD Board (ODB)",
+  "codename": "V2.1 – Čisti Jutarnji Cockpit",
+  "releaseDate": "2026-09-13",
+  "author": "Ivo Cetinić, OleaD",
+  "motto": "CODEX NON VERBA",
+  "repository": "https://github.com/zerixmax/ODB.git"
+}
