@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Play, Pause, RotateCcw, X, Volume2, Sparkles, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Play, Pause, RotateCcw, X, CheckCircle2 } from "lucide-react";
 import confetti from "canvas-confetti";
 
 interface FocusTimerProps {
@@ -14,6 +14,7 @@ export function FocusTimer({ isOpen, onClose }: FocusTimerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(25 * 60);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [sessionsCompleted, setSessionsCompleted] = useState<number>(0);
+  const completedRef = useRef(false);
 
   const switchMode = (newMode: "pomodoro" | "shortBreak" | "longBreak") => {
     setIsRunning(false);
@@ -24,13 +25,21 @@ export function FocusTimer({ isOpen, onClose }: FocusTimerProps) {
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (isRunning && timeLeft === 0) {
-      setIsRunning(false);
+    if (!isRunning) return;
+    completedRef.current = false;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  useEffect(() => {
+    if (!isRunning || timeLeft !== 0 || completedRef.current) return;
+    completedRef.current = true;
+
+    const finish = setTimeout(() => {
       try {
         confetti({
           particleCount: 80,
@@ -38,15 +47,18 @@ export function FocusTimer({ isOpen, onClose }: FocusTimerProps) {
           origin: { y: 0.6 },
           colors: ["#527a29", "#b38600", "#7cae3b"],
         });
-      } catch (e) {}
+      } catch {}
       if (mode === "pomodoro") {
         setSessionsCompleted((prev) => prev + 1);
-        switchMode("shortBreak");
+        setIsRunning(false);
+        setMode("shortBreak");
+        setTimeLeft(5 * 60);
+      } else {
+        setIsRunning(false);
       }
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    }, 0);
+
+    return () => clearTimeout(finish);
   }, [isRunning, timeLeft, mode]);
 
   if (!isOpen) return null;

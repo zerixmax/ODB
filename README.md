@@ -18,7 +18,7 @@ Sustav uklanja jutarnju neodlučnost i fragmentiranost zadataka pružanjem trenu
 
 | Sloj | Tehnologija | Uloga i prednosti |
 | :--- | :--- | :--- |
-| **Frontend & Backend** | **Next.js 15 (App Router, React 19)** | Server Components za brzinu i performanse, Server Actions za direktne mutacije baze bez REST overheada. |
+| **Frontend & Backend** | **Next.js 16 (App Router, React 19)** | Server Components za brzinu i performanse, Server Actions za direktne mutacije baze bez REST overheada. |
 | **Baza podataka & ORM** | **SQLite + Prisma ORM** | Lokalna datotečna baza (`dev.db`), nula latencije, 100% prenosivo bez vanjskih servisa. |
 | **Stiliziranje & UI** | **Tailwind CSS + Lucide Icons** | Svijetla (Light Mode) profesionalna OleaD estetika visoke čitljivosti, prilagođena uredskom dnevnom radu. |
 | **Infrastruktura & Deploy** | **Docker & Coolify (VPS)** | Multi-stage Dockerfile spreman za produkcijski VPS deploy na MyDataKnox okolinu. |
@@ -99,6 +99,13 @@ model TimeLog {
   description String?     // npr. "Konfiguracija Nginx proxyja i SSL certifikata"
   createdAt   DateTime    @default(now())
 }
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique      // weekly_hours_target, monthly_revenue_target, vps_server
+  value     String
+  updatedAt DateTime @updatedAt
+}
 ```
 
 ---
@@ -110,8 +117,8 @@ model TimeLog {
 npm install
 
 # 2. Sinkronizacija baze podataka i seed
-npx prisma db push
-npx tsx prisma/seed.ts
+npm run db:push
+npm run db:seed
 
 # 3. Pokretanje lokalnog razvojnog poslužitelja
 npm run dev

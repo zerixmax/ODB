@@ -3,33 +3,28 @@
 import { useState, useMemo, useEffect } from "react";
 import { Header } from "./Header";
 import { FocusTimer } from "./FocusTimer";
-import { ProjectTile, ProjectData } from "./ProjectTile";
+import { ProjectTile } from "./ProjectTile";
 import { ProjectModal } from "./ProjectModal";
+import { PipelinePanel } from "./PipelinePanel";
 import { 
   Search, 
   Layers, 
-  Flame, 
-  Coins, 
-  Clock, 
   ListFilter,
-  Archive,
-  Laptop,
-  Rocket,
-  Server,
-  Globe,
-  Receipt
+  Archive
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { ProjectData, PotentialLeadData } from "@/lib/types";
 
 interface DashboardContainerProps {
   projects: ProjectData[];
-  systemSettings: Record<string, string>;
+  leads: PotentialLeadData[];
 }
 
-export function DashboardContainer({ projects, systemSettings }: DashboardContainerProps) {
+type SortBy = "PRIORITY" | "PROGRESS" | "PRICE" | "RECENT";
+
+export function DashboardContainer({ projects, leads }: DashboardContainerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
-  const [sortBy, setSortBy] = useState<"PRIORITY" | "PROGRESS" | "PRICE" | "RECENT">("PRIORITY");
+  const [sortBy, setSortBy] = useState<SortBy>("PRIORITY");
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<ProjectData | null>(null);
@@ -61,15 +56,26 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
   const coolifyProjects = activeProjects.filter((p) => p.hasCicd);
   const vpsProjects = activeProjects.filter((p) => p.hosting === "VPS" || p.isVps);
   const totohostProjects = activeProjects.filter((p) => (p.hosting === "TOTOHOST") || (!p.isVps && p.hosting !== "VPS"));
-  const unpaidProjects = activeProjects.filter((p) => !p.isPaid);
+  const unpaidProjects = activeProjects.filter((p) => !p.isDevPaid || !p.isHostingPaid);
+  const inProgressProjects = activeProjects.filter((p) => p.stage === "IN_PROGRESS" || p.stage === "WAITING_VPS" || p.stage === "BACKLOG");
+  const productionProjects = activeProjects.filter((p) => p.stage === "PRODUCTION");
+  const maintenanceProjects = activeProjects.filter((p) => p.stage === "MAINTENANCE");
   const archivedProjects = projects.filter((p) => p.isArchived);
 
-  const deliveryProjects = activeProjects.filter((p) => p.progress >= 75 && p.price !== null);
-  const deliveryBillingPotential = deliveryProjects.reduce((sum, p) => sum + (p.price || 0), 0);
+  const deliveryProjects = activeProjects.filter((p) => p.progress >= 75 && p.devPrice !== null);
+  const deliveryBillingPotential = deliveryProjects.reduce((sum, p) => sum + (p.devPrice || 0), 0);
 
-  const totalWeeklyHours = projects.reduce((total, p) => {
-    return total + p.timeLogs.reduce((sum, log) => sum + log.hours, 0);
-  }, 0);
+  const totalWeeklyHours = (() => {
+    const now = new Date();
+    const diffToMonday = (now.getDay() + 6) % 7;
+    const monday = new Date(now);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(now.getDate() - diffToMonday);
+
+    return projects.reduce((total, p) => {
+      return total + p.timeLogs.reduce((sum, log) => sum + (log.createdAt >= monday ? log.hours : 0), 0);
+    }, 0);
+  })();
 
   // Filter & Search Logic
   const filteredProjects = useMemo(() => {
@@ -87,7 +93,10 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
         if (selectedFilter === "COOLIFY") return p.hasCicd;
         if (selectedFilter === "VPS") return p.hosting === "VPS" || p.isVps;
         if (selectedFilter === "TOTOHOST") return p.hosting === "TOTOHOST" || (!p.isVps && p.hosting !== "VPS");
-        if (selectedFilter === "UNPAID") return !p.isPaid;
+        if (selectedFilter === "UNPAID") return !p.isDevPaid || !p.isHostingPaid;
+        if (selectedFilter === "STAGE_IN_PROGRESS") return p.stage === "IN_PROGRESS" || p.stage === "WAITING_VPS" || p.stage === "BACKLOG";
+        if (selectedFilter === "STAGE_PRODUCTION") return p.stage === "PRODUCTION";
+        if (selectedFilter === "STAGE_MAINTENANCE") return p.stage === "MAINTENANCE";
         return true;
       })
       .filter((p) => {
@@ -95,6 +104,7 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
         const q = searchQuery.toLowerCase();
         return (
           p.domain.toLowerCase().includes(q) ||
+          (p.altDomains && p.altDomains.toLowerCase().includes(q)) ||
           p.client.toLowerCase().includes(q) ||
           p.techStack.toLowerCase().includes(q) ||
           p.currentStatus.toLowerCase().includes(q) ||
@@ -110,7 +120,7 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
           return b.progress - a.progress;
         }
         if (sortBy === "PRICE") {
-          return (b.price || 0) - (a.price || 0);
+          return (b.devPrice || 0) - (a.devPrice || 0);
         }
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
@@ -174,7 +184,7 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
                 <span>Sortiraj:</span>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => setSortBy(e.target.value as SortBy)}
                   className="bg-[#f8faf7] border border-[#d6e2d4] rounded-lg px-2.5 py-1 text-xs text-[#162418] font-bold outline-none cursor-pointer hover:bg-white"
                 >
                   <option value="PRIORITY">🔴 Po prioritetu (Hitno prvo)</option>
@@ -189,7 +199,7 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
 
           {/* Clean Filter Pills Bar (Morning Cockpit Decision Filters) */}
           <div className="flex items-center gap-1.5 overflow-x-auto pt-3.5 mt-3 border-t border-[#edf2eb] pb-1 scrollbar-none">
-            
+
             {/* 1. Svi (17) */}
             <button
               onClick={() => setSelectedFilter("ALL")}
@@ -202,85 +212,113 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
               Svi ({activeProjects.length})
             </button>
 
-            {/* 2. 🔥 Hitno Danas (3) */}
+            {/* 2. 🔥 Hitno Danas */}
             <button
               onClick={() => setSelectedFilter("URGENT")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-extrabold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-extrabold transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === "URGENT"
                   ? "bg-rose-700 text-white shadow-sm shadow-rose-900/30"
                   : "bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200"
               }`}
             >
-              <Flame className="w-3.5 h-3.5 text-rose-600" />
-              <span>🔥 Hitno Danas ({urgentProjects.length})</span>
+              🔥 Hitno Danas ({urgentProjects.length})
             </button>
 
-            {/* 3. 💻 Laptop (4) */}
+            {/* 3. 💻 Laptop */}
             <button
               onClick={() => setSelectedFilter("LAPTOP")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === "LAPTOP"
                   ? "bg-purple-700 text-white shadow-sm shadow-purple-900/30"
                   : "bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200"
               }`}
             >
-              <Laptop className="w-3.5 h-3.5 text-purple-600" />
-              <span>💻 Laptop ({laptopProjects.length})</span>
+              💻 Laptop ({laptopProjects.length})
             </button>
 
-            {/* 4. 🚀 Coolify (5) */}
+            {/* 4. 🚀 Coolify CI/CD (single rocket only) */}
             <button
               onClick={() => setSelectedFilter("COOLIFY")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === "COOLIFY"
                   ? "bg-sky-700 text-white shadow-sm shadow-sky-900/30"
                   : "bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200"
               }`}
             >
-              <Rocket className="w-3.5 h-3.5 text-sky-600" />
-              <span>🚀 Coolify ({coolifyProjects.length})</span>
+              🚀 Coolify CI/CD ({coolifyProjects.length})
             </button>
 
-            {/* 5. 📦 VPS (8) */}
+            {/* 5. 📦 VPS */}
             <button
               onClick={() => setSelectedFilter("VPS")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === "VPS"
                   ? "bg-emerald-700 text-white shadow-sm shadow-emerald-900/30"
                   : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
               }`}
             >
-              <Server className="w-3.5 h-3.5 text-emerald-600" />
-              <span>📦 VPS ({vpsProjects.length})</span>
+              📦 VPS ({vpsProjects.length})
             </button>
 
-            {/* 6. 🌐 Totohost (9) */}
+            {/* 6. 🌐 Totohost */}
             <button
               onClick={() => setSelectedFilter("TOTOHOST")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === "TOTOHOST"
                   ? "bg-blue-700 text-white shadow-sm shadow-blue-900/30"
                   : "bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200"
               }`}
             >
-              <Globe className="w-3.5 h-3.5 text-blue-600" />
-              <span>🌐 Totohost ({totohostProjects.length})</span>
+              🌐 Totohost ({totohostProjects.length})
             </button>
 
             {/* 7. 💶 Neplaćeno */}
             <button
               onClick={() => setSelectedFilter("UNPAID")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedFilter === "UNPAID"
                   ? "bg-amber-700 text-white shadow-sm shadow-amber-900/30"
                   : "bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200"
               }`}
             >
-              <Receipt className="w-3.5 h-3.5 text-amber-600" />
-              <span>💶 Neplaćeno ({unpaidProjects.length})</span>
+              💶 Neplaćeno ({unpaidProjects.length})
             </button>
 
-            {/* 8. 📦 Arhiva */}
+            {/* 8. ⚡ U Izradi | ✅ Produkcija | 🛠️ Održavanje */}
+            <button
+              onClick={() => setSelectedFilter("STAGE_IN_PROGRESS")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
+                selectedFilter === "STAGE_IN_PROGRESS"
+                  ? "bg-[#527a29] text-white shadow-sm shadow-[#527a29]/30"
+                  : "bg-[#f0f5ed] text-[#3b591d] hover:bg-[#e0edd7] border border-[#c4dcbc]"
+              }`}
+            >
+              ⚡ U Izradi ({inProgressProjects.length})
+            </button>
+
+            <button
+              onClick={() => setSelectedFilter("STAGE_PRODUCTION")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
+                selectedFilter === "STAGE_PRODUCTION"
+                  ? "bg-emerald-700 text-white shadow-sm shadow-emerald-900/30"
+                  : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+              }`}
+            >
+              ✅ Produkcija ({productionProjects.length})
+            </button>
+
+            <button
+              onClick={() => setSelectedFilter("STAGE_MAINTENANCE")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ${
+                selectedFilter === "STAGE_MAINTENANCE"
+                  ? "bg-amber-700 text-white shadow-sm shadow-amber-900/30"
+                  : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+              }`}
+            >
+              🛠️ Održavanje ({maintenanceProjects.length})
+            </button>
+
+            {/* 9. 📦 Arhiva */}
             <button
               onClick={() => setSelectedFilter("ARCHIVE")}
               className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap ml-auto ${
@@ -323,6 +361,9 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
           </div>
         )}
 
+        {/* Najave mogućih poslova (Pipeline) — na dno sekcija (projekti: Hitno prvi od gore) */}
+        <PipelinePanel leads={leads} />
+
       </main>
 
       {/* Footer */}
@@ -333,10 +374,21 @@ export function DashboardContainer({ projects, systemSettings }: DashboardContai
             <span>•</span>
             <span className="font-mono font-bold text-[#a07400]">CODEX NON VERBA</span>
             <span>•</span>
-            <span>Ivo Cetinić, OleaD</span>
+            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#eef5eb] text-[#4d7328] border border-[#d2e5ca]">
+              v2.2 Cockpit
+            </span>
+            <span>•</span>
+            <a
+              href="https://olead.hr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono font-bold text-[#4d7328] hover:text-[#35521b] hover:underline transition-colors"
+            >
+              code by olead.hr
+            </a>
           </div>
           <div className="font-mono text-[11px] text-[#7a8e7d]">
-            17 Aktivnih Servisa • SQLite dev.db • Next.js 15 App Router • MyDataKnox VPS
+            {activeProjects.length} Aktivnih Servisa • SQLite dev.db • Next.js 16 App Router • MyDataKnox VPS
           </div>
         </div>
       </footer>

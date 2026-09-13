@@ -1,8 +1,8 @@
 {
   "name": "odb-dashboard",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "OleaD Board (ODB)",
-  "codename": "V2.1 – Čisti Jutarnji Cockpit",
+  "codename": "V2.2 – Pipeline, WHM & Financije",
   "releaseDate": "2026-09-13",
   "author": "Ivo Cetinić, OleaD",
   "motto": "CODEX NON VERBA",

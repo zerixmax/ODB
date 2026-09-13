@@ -4,7 +4,6 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { 
   Globe, 
-  Server, 
   ExternalLink, 
   FileText, 
   Edit3, 
@@ -19,8 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileCode2,
-  ChevronRight,
-  Receipt
+  ChevronRight
 } from "lucide-react";
 import { 
   quickAddTimeLog, 
@@ -30,36 +28,20 @@ import {
   toggleDevDevice,
   toggleCicd,
   toggleHosting,
-  togglePaymentStatus,
+  toggleDevPayment,
+  toggleHostingPayment,
   toggleArchiveProject,
   deleteProject
 } from "@/lib/actions";
-import { formatCurrency } from "@/lib/utils";
+import { 
+  formatCurrency, 
+  formatYearOnly, 
+  formatRelativeTime, 
+  formatDate, 
+  daysUntil 
+} from "@/lib/utils";
+import { ProjectData } from "@/lib/types";
 import confetti from "canvas-confetti";
-
-export interface ProjectData {
-  id: string;
-  domain: string;
-  client: string;
-  techStack: string;
-  hosting: string;
-  isVps: boolean;
-  currentStatus: string;
-  stage: string;
-  priority: string;
-  progress: number;
-  price: number | null;
-  isPaid: boolean;
-  docUrl: string | null;
-  devDevice: string;
-  hasGitBackup: boolean;
-  hasCicd: boolean;
-  notes: string | null;
-  isArchived: boolean;
-  timeLogs: { id: string; hours: number; description: string | null; createdAt: Date }[];
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 interface ProjectTileProps {
   project: ProjectData;
@@ -88,7 +70,7 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
             origin: { y: 0.6 },
             colors: ["#527a29", "#7cae3b", "#b38600"],
           });
-        } catch (e) {}
+        } catch {}
       }
     });
   };
@@ -110,7 +92,7 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
             origin: { y: 0.6 },
             colors: ["#527a29", "#7cae3b", "#b38600"],
           });
-        } catch (e) {}
+        } catch {}
       }
     });
   };
@@ -127,9 +109,15 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
     });
   };
 
-  const handleTogglePayment = () => {
+  const handleToggleDevPayment = () => {
     startTransition(async () => {
-      await togglePaymentStatus(project.id, !project.isPaid);
+      await toggleDevPayment(project.id, !project.isDevPaid);
+    });
+  };
+
+  const handleToggleHostingPayment = () => {
+    startTransition(async () => {
+      await toggleHostingPayment(project.id, !project.isHostingPaid);
     });
   };
 
@@ -301,26 +289,50 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
             {project.techStack}
           </span>
 
-          {/* Payment Status Badge (Clickable Toggle) */}
+          {/* Izrada Payment Badge (Clickable Toggle) */}
           <button
-            onClick={handleTogglePayment}
+            onClick={handleToggleDevPayment}
             disabled={isPending}
             className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-              project.isPaid
+              project.isDevPaid
                 ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
                 : "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
             }`}
-            title="Klikni za promjenu statusa naplate [ PLAĆENO / NIJE PLAĆENO ]"
+            title="Klikni za promjenu statusa naplate izrade [ PLAĆENO / NIJE PLAĆENO ]"
           >
-            {project.isPaid ? (
+            {project.isDevPaid ? (
               <>
                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                <span>PLAĆENO</span>
+                <span>Izrada {project.devPrice !== null && project.devPrice > 0 ? `${formatCurrency(project.devPrice)} ` : ""}[ PLAĆENO ]</span>
               </>
             ) : (
               <>
                 <AlertCircle className="w-3 h-3 text-amber-600" />
-                <span>NIJE PLAĆENO</span>
+                <span>Izrada {project.devPrice !== null && project.devPrice > 0 ? `${formatCurrency(project.devPrice)} ` : ""}[ NIJE PLAĆENO ]</span>
+              </>
+            )}
+          </button>
+
+          {/* Hosting Payment Badge (Clickable Toggle) */}
+          <button
+            onClick={handleToggleHostingPayment}
+            disabled={isPending}
+            className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+              project.isHostingPaid
+                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                : "bg-orange-50 text-orange-900 border-orange-300 hover:bg-orange-100"
+            }`}
+            title="Klikni za promjenu statusa naplate hostinga [ PLAĆENO / NIJE PLAĆENO ]"
+          >
+            {project.isHostingPaid ? (
+              <>
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>Hosting {project.hostingPrice !== null && project.hostingPrice > 0 ? `${formatCurrency(project.hostingPrice)}/god ` : ""}[ PLAĆENO ]</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-3 h-3 text-orange-600" />
+                <span>Hosting {project.hostingPrice !== null && project.hostingPrice > 0 ? `${formatCurrency(project.hostingPrice)}/god ` : ""}[ NIJE PLAĆENO ]</span>
               </>
             )}
           </button>
@@ -460,17 +472,64 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
 
       {/* Bottom Footer: Price, Quick Time Logging (+15m, +30m, +1h), Edit actions */}
       <div className="mt-4 pt-3 border-t border-[#e8efe6]">
+        {/* Lifecycle Row: Setup year, Deadline countdown, Last work */}
+        <div className="grid grid-cols-3 gap-2 mb-3 text-[10px] font-mono">
+          <div className="min-w-0">
+            <span className="text-[#6d8270] text-[9px] block uppercase font-bold">Setup</span>
+            {project.setupDate ? (
+              <span className="text-[#162418] font-black flex items-center gap-1" title={project.setupDate.toISOString()}>
+                🗓️ {formatYearOnly(project.setupDate)}
+              </span>
+            ) : (
+              <span className="text-[#7a8e7d]">🗓️ --</span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[#6d8270] text-[9px] block uppercase font-bold">Rok</span>
+            {project.deadlineDate ? (
+              (() => {
+                const remaining = daysUntil(project.deadlineDate);
+                if (remaining === null) return <span className="text-[#7a8e7d]">Nema</span>;
+                return (
+                  <span className={`flex items-center gap-1 font-bold ${remaining < 0 ? "text-rose-700" : remaining <= 7 ? "text-amber-700" : "text-[#162418]"}`} title={formatDate(project.deadlineDate)}>
+                    ⏳ {formatDate(project.deadlineDate)}
+                    {remaining >= 0 ? ` (još ${remaining} dana)` : " (prošao)"}
+                  </span>
+                );
+              })()
+            ) : (
+              <span className="text-[#7a8e7d]">⏳ --</span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[#6d8270] text-[9px] block uppercase font-bold">Zadnji rad</span>
+            <span className="text-[#162418] font-bold truncate block" title={project.lastUpdateDate.toISOString()}>
+              {formatRelativeTime(project.lastUpdateDate)}
+            </span>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-2">
           {/* Price / Billing Status */}
           <div className="text-xs font-mono">
             <span className="text-[#6d8270] text-[10px] block uppercase font-bold">Naplata</span>
-            <div className="flex items-center gap-1.5">
-              {project.price !== null && project.price > 0 ? (
+            <div className="flex items-center gap-2">
+              <div>
                 <span className="text-[#a07400] font-black text-sm">
-                  {formatCurrency(project.price)}
+                  {project.devPrice !== null && project.devPrice > 0 ? formatCurrency(project.devPrice) : "--"}
                 </span>
-              ) : (
-                <span className="text-[#7a8e7d] font-semibold text-xs">-- (Vlastiti)</span>
+                <span className="text-[#7a8e7d] text-[9px] block">Izrada</span>
+              </div>
+              {project.hostingPrice !== null && project.hostingPrice > 0 && (
+                <>
+                  <span className="text-[#7a8e7d]">+</span>
+                  <div>
+                    <span className="text-[#3b591d] font-extrabold text-sm">
+                      {formatCurrency(project.hostingPrice)}
+                    </span>
+                    <span className="text-[#7a8e7d] text-[9px] block">Hosting /god</span>
+                  </div>
+                </>
               )}
             </div>
           </div>

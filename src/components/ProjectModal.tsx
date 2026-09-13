@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { X, Plus, Edit3, Globe, Server, Cpu, FileText, Coins, Laptop, Monitor, Rocket, GitBranch, CheckCircle2, Receipt, FileCode2 } from "lucide-react";
+import { useTransition } from "react";
+import { X, Plus, Edit3 } from "lucide-react";
 import { createProject, updateProject } from "@/lib/actions";
-import { ProjectData } from "./ProjectTile";
+import { ProjectData } from "@/lib/types";
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -33,7 +33,7 @@ export function ProjectModal({ isOpen, projectToEdit, onClose }: ProjectModalPro
             </div>
             <div>
               <h3 className="font-extrabold text-[#162418] text-base tracking-tight">
-                {isEditing ? `Uredi projekt: ${projectToEdit.domain}` : "Novi OleaD Projekt (V2.1)"}
+                {isEditing ? `Uredi projekt: ${projectToEdit.domain}` : "Novi OleaD Projekt (V2.2)"}
               </h3>
               <p className="text-xs text-[#6d8270]">
                 {isEditing ? "Ažurirajte tehničke specifikacije, hosting, status naplate i bilješke" : "Dodavanje novog projekta s hostingom i opaskama"}
@@ -203,7 +203,7 @@ export function ProjectModal({ isOpen, projectToEdit, onClose }: ProjectModalPro
             </div>
           </div>
 
-          {/* Progress, Price & isPaid */}
+          {/* Progress, DevPrice & isDevPaid */}
           <div className="grid grid-cols-3 gap-3 items-center">
             <div>
               <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Dovršenost (%)</label>
@@ -217,12 +217,13 @@ export function ProjectModal({ isOpen, projectToEdit, onClose }: ProjectModalPro
               />
             </div>
             <div>
-              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Cijena (€)</label>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Cijena izrade (€)</label>
               <input
-                name="price"
+                name="devPrice"
                 type="number"
                 step="0.01"
-                defaultValue={projectToEdit?.price ?? ""}
+                min="0"
+                defaultValue={projectToEdit?.devPrice ?? ""}
                 placeholder="npr. 650.00"
                 className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono font-bold"
               />
@@ -230,14 +231,75 @@ export function ProjectModal({ isOpen, projectToEdit, onClose }: ProjectModalPro
             <div className="pt-4">
               <label className="flex items-center gap-2 text-xs text-[#162418] font-bold cursor-pointer bg-[#f8faf7] border border-[#d6e2d4] p-2 rounded-xl hover:bg-white">
                 <input
-                  name="isPaid"
+                  name="isDevPaid"
                   type="checkbox"
-                  defaultChecked={projectToEdit ? projectToEdit.isPaid : false}
+                  defaultChecked={projectToEdit ? projectToEdit.isDevPaid : false}
                   className="rounded border-[#d6e2d4] text-emerald-600 focus:ring-0"
                 />
-                <span className="font-mono text-xs">Plaćeno (DA/NE)</span>
+                <span className="font-mono text-xs">Izrada Plaćena (DA/NE)</span>
               </label>
             </div>
+          </div>
+
+          {/* Hosting Price & Payment */}
+          <div className="grid grid-cols-2 gap-3 items-center">
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Godišnji hosting (€/god)</label>
+              <input
+                name="hostingPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                defaultValue={projectToEdit?.hostingPrice ?? ""}
+                placeholder="npr. 120.00"
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono font-bold"
+              />
+            </div>
+            <div className="pt-4">
+              <label className="flex items-center gap-2 text-xs text-[#162418] font-bold cursor-pointer bg-[#f8faf7] border border-[#d6e2d4] p-2 rounded-xl hover:bg-white">
+                <input
+                  name="isHostingPaid"
+                  type="checkbox"
+                  defaultChecked={projectToEdit ? projectToEdit.isHostingPaid : false}
+                  className="rounded border-[#d6e2d4] text-emerald-600 focus:ring-0"
+                />
+                <span className="font-mono text-xs">Hosting Plaćen (DA/NE)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Lifecycle Dates: Setup + Deadline */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Setup datum (na serveru)</label>
+              <input
+                name="setupDate"
+                type="datetime-local"
+                defaultValue={projectToEdit?.setupDate?.toISOString().slice(0, 16) || ""}
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Rok isporuke (deadline)</label>
+              <input
+                name="deadlineDate"
+                type="datetime-local"
+                defaultValue={projectToEdit?.deadlineDate?.toISOString().slice(0, 16) || ""}
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Alt domains */}
+          <div>
+            <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Alternativne domene (npr. &quot;mokalo.hr / wifi-korcula.com&quot;)</label>
+            <input
+              name="altDomains"
+              type="text"
+              defaultValue={projectToEdit?.altDomains || ""}
+              placeholder="npr. mokalo.hr / wifi-korcula.com"
+              className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none"
+            />
           </div>
 
           {/* Google Doc / Drive link */}

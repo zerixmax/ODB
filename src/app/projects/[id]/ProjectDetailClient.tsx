@@ -8,68 +8,39 @@ import {
   ExternalLink, 
   FileText, 
   Clock, 
-  Plus, 
   Trash2, 
   CheckCircle2, 
-  AlertCircle,
   Cpu,
-  Layers,
   Laptop,
   Monitor,
   Rocket,
-  GitBranch,
   Save,
   Server,
   Receipt,
   FileCode2,
-  Calendar,
-  Sparkles,
-  Terminal,
-  Database,
   ExternalLinkIcon
 } from "lucide-react";
 import { 
   quickAddTimeLog, 
   deleteTimeLog, 
-  updateProjectNotes, 
-  togglePaymentStatus, 
+  saveProjectNotes, 
+  toggleDevPayment,
+  toggleHostingPayment, 
   toggleHosting, 
   toggleDevDevice, 
   toggleCicd,
   updateProjectStage,
   updateProjectPriority,
   updateProjectProgress,
-  updateProjectStatusText
+  updateProjectStatusText,
+  updateProjectBasics
 } from "@/lib/actions";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateTimeFull, formatDiskUsage } from "@/lib/utils";
+import { ProjectData } from "@/lib/types";
 import confetti from "canvas-confetti";
 
-export interface ProjectDetailData {
-  id: string;
-  domain: string;
-  client: string;
-  techStack: string;
-  hosting: string;
-  isVps: boolean;
-  currentStatus: string;
-  stage: string;
-  priority: string;
-  progress: number;
-  price: number | null;
-  isPaid: boolean;
-  docUrl: string | null;
-  devDevice: string;
-  hasGitBackup: boolean;
-  hasCicd: boolean;
-  notes: string | null;
-  isArchived: boolean;
-  timeLogs: { id: string; hours: number; description: string | null; createdAt: Date }[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 interface ProjectDetailClientProps {
-  project: ProjectDetailData;
+  project: ProjectData;
 }
 
 export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
@@ -85,6 +56,48 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   const [statusText, setStatusText] = useState(project.currentStatus);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
 
+  // Full edit form state
+  const [editForm, setEditForm] = useState({
+    domain: project.domain,
+    altDomains: project.altDomains || "",
+    client: project.client,
+    techStack: project.techStack,
+    devPrice: project.devPrice !== null ? String(project.devPrice) : "",
+    hostingPrice: project.hostingPrice !== null ? String(project.hostingPrice) : "",
+    setupDate: project.setupDate ? project.setupDate.toISOString().slice(0, 16) : "",
+    deadlineDate: project.deadlineDate ? project.deadlineDate.toISOString().slice(0, 16) : "",
+    cpanelUser: project.cpanelUser || "",
+    diskUsageMb: project.diskUsageMb !== null ? String(project.diskUsageMb) : "",
+    asaId: project.asaId || "",
+    asaExplorerUrl: project.asaExplorerUrl || "",
+  });
+  const [editSaved, setEditSaved] = useState(false);
+
+  const updateEditField = (field: keyof typeof editForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleSaveBasics = () => {
+    startTransition(async () => {
+      await updateProjectBasics(project.id, {
+        domain: editForm.domain.trim(),
+        altDomains: editForm.altDomains.trim() || null,
+        client: editForm.client.trim(),
+        techStack: editForm.techStack.trim(),
+        devPrice: editForm.devPrice !== "" ? parseFloat(editForm.devPrice) : null,
+        hostingPrice: editForm.hostingPrice !== "" ? parseFloat(editForm.hostingPrice) : null,
+        setupDate: editForm.setupDate ? new Date(editForm.setupDate) : null,
+        deadlineDate: editForm.deadlineDate ? new Date(editForm.deadlineDate) : null,
+        cpanelUser: editForm.cpanelUser.trim() || null,
+        diskUsageMb: editForm.diskUsageMb !== "" ? parseInt(editForm.diskUsageMb, 10) : null,
+        asaId: editForm.asaId.trim() || null,
+        asaExplorerUrl: editForm.asaExplorerUrl.trim() || null,
+      });
+      setEditSaved(true);
+      setTimeout(() => setEditSaved(false), 3000);
+    });
+  };
+
   const totalLoggedHours = project.timeLogs.reduce((sum, log) => sum + log.hours, 0);
   const isLaptop = project.devDevice === "LAPTOP";
   const isVpsHosting = project.hosting === "VPS" || project.isVps;
@@ -92,7 +105,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   // Save Notes handler
   const handleSaveNotes = () => {
     startTransition(async () => {
-      await updateProjectNotes(project.id, notes);
+      await saveProjectNotes(project.id, notes);
       setNotesSaved(true);
       setTimeout(() => setNotesSaved(false), 3000);
     });
@@ -110,10 +123,17 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
     });
   };
 
-  // Toggle Payment
-  const handleTogglePayment = () => {
+  // Toggle Dev Payment
+  const handleToggleDevPayment = () => {
     startTransition(async () => {
-      await togglePaymentStatus(project.id, !project.isPaid);
+      await toggleDevPayment(project.id, !project.isDevPaid);
+    });
+  };
+
+  // Toggle Hosting Payment
+  const handleToggleHostingPayment = () => {
+    startTransition(async () => {
+      await toggleHostingPayment(project.id, !project.isHostingPaid);
     });
   };
 
@@ -143,7 +163,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
             origin: { y: 0.6 },
             colors: ["#527a29", "#7cae3b", "#b38600"],
           });
-        } catch (e) {}
+        } catch {}
       }
     });
   };
@@ -167,7 +187,7 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
             origin: { y: 0.6 },
             colors: ["#527a29", "#7cae3b", "#b38600"],
           });
-        } catch (e) {}
+        } catch {}
       }
     });
   };
@@ -295,21 +315,39 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
                 <span>Hosting: {isVpsHosting ? "📦 VPS (Coolify)" : "🌐 TOTOHOST"}</span>
               </button>
 
-              {/* Prekidač [ PLAĆENO / NIJE PLAĆENO ] + Iznos u € */}
+              {/* Prekidač [ IZRADA PLAĆENO | NIJE PLAĆENO ] + Iznos u € */}
               <button
-                onClick={handleTogglePayment}
+                onClick={handleToggleDevPayment}
                 disabled={isPending}
                 className={`px-3.5 py-2 rounded-xl text-xs font-mono font-extrabold border transition-all cursor-pointer flex items-center gap-2 shadow-xs active:scale-95 ${
-                  project.isPaid
+                  project.isDevPaid
                     ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
                     : "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
                 }`}
-                title="Klikni za promjenu statusa plaćanja"
+                title="Klikni za promjenu statusa naplate izrade"
               >
                 <Receipt className="w-4 h-4 text-current" />
                 <span>
-                  {project.isPaid ? "✅ PLAĆENO" : "⚠️ NIJE PLAĆENO"}
-                  {project.price !== null && ` (${formatCurrency(project.price)})`}
+                  {project.isDevPaid ? "✅ Izrada PLAĆENO" : "⚠️ Izrada NIJE PLAĆENO"}
+                  {project.devPrice !== null && ` (${formatCurrency(project.devPrice)})`}
+                </span>
+              </button>
+
+              {/* Prekidač [ HOSTING PLAĆENO | NIJE PLAĆENO ] + Iznos u €/god */}
+              <button
+                onClick={handleToggleHostingPayment}
+                disabled={isPending}
+                className={`px-3.5 py-2 rounded-xl text-xs font-mono font-extrabold border transition-all cursor-pointer flex items-center gap-2 shadow-xs active:scale-95 ${
+                  project.isHostingPaid
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                    : "bg-orange-50 text-orange-900 border-orange-300 hover:bg-orange-100"
+                }`}
+                title="Klikni za promjenu statusa naplate hostinga"
+              >
+                <Receipt className="w-4 h-4 text-current" />
+                <span>
+                  {project.isHostingPaid ? "✅ Hosting PLAĆENO" : "⚠️ Hosting NIJE PLAĆENO"}
+                  {project.hostingPrice !== null && ` (${formatCurrency(project.hostingPrice)}/god)`}
                 </span>
               </button>
 
@@ -474,6 +512,169 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
 
         </div>
 
+        {/* 1.5. PUNA FORMA ZA UREĐIVANJE OSNOVNIH PODATAKA */}
+        <div className="cockpit-card rounded-2xl p-6 bg-white border border-[#d2dfd0] shadow-sm">
+          <div className="flex items-center justify-between pb-3 border-b border-[#edf2eb]">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#eef5eb] border border-[#d2e5ca] flex items-center justify-center text-[#527a29]">
+                <Save className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#162418]">Uređivanje projektnih podataka</h2>
+                <p className="text-[11px] text-[#6d8270]">
+                  Domena, klijent, cijene, rokovi, WHM / cPanel podaci i Algorand ASA
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveBasics}
+              disabled={isPending}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95 ${
+                editSaved
+                  ? "bg-emerald-600 text-white shadow-emerald-600/30"
+                  : "bg-[#527a29] hover:bg-[#5e8c2f] text-white shadow-[#527a29]/30"
+              }`}
+            >
+              {editSaved ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Spremljeno!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isPending ? "Spremanje..." : "Spremi Promjene"}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-[#162418]">
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Glavna domena *</label>
+              <input
+                type="text"
+                value={editForm.domain}
+                onChange={updateEditField("domain")}
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] font-mono font-bold outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Alternativne domene</label>
+              <input
+                type="text"
+                value={editForm.altDomains}
+                onChange={updateEditField("altDomains")}
+                placeholder="npr. mokalo.hr / wifi-korcula.com"
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Klijent / Organizacija *</label>
+              <input
+                type="text"
+                value={editForm.client}
+                onChange={updateEditField("client")}
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] font-bold outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Tehnološki stog</label>
+              <input
+                type="text"
+                value={editForm.techStack}
+                onChange={updateEditField("techStack")}
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Cijena izrade (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editForm.devPrice}
+                onChange={updateEditField("devPrice")}
+                placeholder="npr. 650.00"
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Godišnji hosting (€/god)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editForm.hostingPrice}
+                onChange={updateEditField("hostingPrice")}
+                placeholder="npr. 120.00"
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Setup datum (na serveru)</label>
+              <input
+                type="datetime-local"
+                value={editForm.setupDate}
+                onChange={updateEditField("setupDate")}
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Rok isporuke (deadline)</label>
+              <input
+                type="datetime-local"
+                value={editForm.deadlineDate}
+                onChange={updateEditField("deadlineDate")}
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">cPanel korisnik (WHM)</label>
+              <input
+                type="text"
+                value={editForm.cpanelUser}
+                onChange={updateEditField("cpanelUser")}
+                placeholder="npr. pontacom"
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Zauzeće diska (MB)</label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={editForm.diskUsageMb}
+                onChange={updateEditField("diskUsageMb")}
+                placeholder="npr. 5939"
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">Algorand ASA ID</label>
+              <input
+                type="text"
+                value={editForm.asaId}
+                onChange={updateEditField("asaId")}
+                placeholder="npr. 987654321"
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono font-bold text-[#4a5f4e] mb-1">ASA Explorer URL</label>
+              <input
+                type="url"
+                value={editForm.asaExplorerUrl}
+                onChange={updateEditField("asaExplorerUrl")}
+                placeholder="https://allo.info/asset/..."
+                className="w-full bg-[#f8faf7] border border-[#d6e2d4] focus:border-[#527a29] focus:bg-white rounded-xl px-3 py-2 text-xs text-[#162418] outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* 2-COLUMN GRID: 2. TECHNICAL NOTES & 3. TIME TRACKING + QUICK LINKS */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
@@ -624,6 +825,68 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
               </div>
             </div>
 
+            {/* Server & WHM Preglednik */}
+            <div className="cockpit-card rounded-2xl p-5 bg-white border border-[#d2dfd0] shadow-sm">
+              <h3 className="text-sm font-bold text-[#162418] flex items-center gap-2 mb-3">
+                <Server className="w-4 h-4 text-[#527a29]" />
+                <span>Server &amp; WHM</span>
+              </h3>
+
+              <div className="space-y-2.5 text-xs font-mono">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8faf7] border border-[#e4ece2]">
+                  <span className="text-[#5c7060] font-bold">Točan setup na serveru</span>
+                  <span className={`font-extrabold ${project.setupDate ? "text-[#162418]" : "text-[#7a8e7d]"}`}>
+                    {project.setupDate ? formatDateTimeFull(project.setupDate) : "Nepoznato"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8faf7] border border-[#e4ece2]">
+                  <span className="text-[#5c7060] font-bold">Hosting paket</span>
+                  <span className="font-extrabold text-[#162418]">
+                    {isVpsHosting ? "📦 VPS (Coolify)" : "🌐 TOTOHOST (cPanel)"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8faf7] border border-[#e4ece2]">
+                  <span className="text-[#5c7060] font-bold">cPanel korisnik</span>
+                  <span className={`font-extrabold font-mono ${project.cpanelUser ? "text-[#162418]" : "text-[#7a8e7d]"}`}>
+                    {project.cpanelUser || "--"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8faf7] border border-[#e4ece2]">
+                  <span className="text-[#5c7060] font-bold">Zauzeće diska</span>
+                  <span className={`font-extrabold ${project.diskUsageMb !== null ? "text-[#162418]" : "text-[#7a8e7d]"}`}>
+                    {project.diskUsageMb !== null ? formatDiskUsage(project.diskUsageMb) : "--"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Algorand ASA Blok (samo ako projekt ima asaId) */}
+            {project.asaId && (
+              <div className="cockpit-card rounded-2xl p-5 bg-gradient-to-br from-[#0f172a] to-[#1e293b] border border-[#334155] shadow-sm text-white">
+                <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+                  <span className="text-[#33d17a] text-base leading-none">Ⱥ</span>
+                  <span>Algorand ASA Token</span>
+                </h3>
+                <div className="space-y-2.5 text-xs font-mono">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
+                    <span className="text-slate-400 font-bold">Asset ID</span>
+                    <span className="font-extrabold text-[#33d17a]">{project.asaId}</span>
+                  </div>
+                  {project.asaExplorerUrl && (
+                    <a
+                      href={project.asaExplorerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                    >
+                      <span className="text-slate-400 font-bold">Explorer (Allo / Pera)</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#33d17a]" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Time Tracking Card */}
             <div className="cockpit-card rounded-2xl p-5 bg-white border border-[#d2dfd0] shadow-sm flex-1 flex flex-col">
               <div className="flex items-center justify-between pb-3 border-b border-[#edf2eb]">
@@ -755,7 +1018,15 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
       <footer className="border-t border-[#e2eae0] bg-white py-4 mt-auto shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between text-xs text-[#5c7060]">
           <div>
-            <span className="font-extrabold text-[#162418]">OleaD Board (ODB)</span> • <span>Ivo Cetinić</span>
+            <span className="font-extrabold text-[#162418]">OleaD Board (ODB)</span> •{" "}
+            <a
+              href="https://olead.hr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono font-bold text-[#4d7328] hover:text-[#35521b] hover:underline transition-colors"
+            >
+              code by olead.hr
+            </a>
           </div>
           <div className="font-mono text-[11px] text-[#7a8e7d]">
             Projekt: {project.domain} • ID: {project.id}

@@ -8,9 +8,7 @@ import {
   Coins, 
   Server, 
   Plus, 
-  Timer,
-  Zap,
-  Globe
+  Timer
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -65,33 +63,19 @@ export function Header({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           
-          {/* Logo & Brand Motto */}
+          {/* Logo & Time */}
           <div className="flex items-center justify-between sm:justify-start gap-4">
             <div className="flex items-center gap-3">
               {/* OleaD Logo Image */}
-              <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-[#cfded0] shadow-sm flex items-center justify-center bg-white p-0.5">
+              <div className="relative w-32 h-24 rounded-xl overflow-hidden border border-[#cfded0] shadow-sm flex items-center justify-center bg-white p-1">
                 <Image
                   src="/olead_logo.jpg"
                   alt="OleaD Logo"
-                  width={44}
-                  height={44}
+                  width={128}
+                  height={96}
                   className="w-full h-full object-contain rounded-lg"
                   priority
                 />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-black tracking-tight text-[#162418] flex items-center gap-1.5">
-                    OleaD Board
-                    <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#eef5eb] text-[#4d7328] border border-[#d2e5ca]">
-                      v2.1 Cockpit
-                    </span>
-                  </h1>
-                </div>
-                <p className="text-xs font-mono font-bold text-[#a07400] flex items-center gap-1 mt-0.5">
-                  <Zap className="w-3 h-3 text-[#b38600] fill-[#b38600]" />
-                  CODEX NON VERBA
-                </p>
               </div>
             </div>
 

@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
@@ -8,27 +9,65 @@ datasource db {
 }
 
 model Project {
-  id            String      @id @default(cuid())
-  domain        String      // npr. "marcopolosport.com", "ponta.com.hr", "oly-bot"
-  client        String      // npr. "Marko Polo Sport", "Camp Ponta"
-  techStack     String      // npr. "Astro, Payload CMS", "Next.js"
-  hosting       String      @default("VPS") // "VPS" ili "TOTOHOST"
-  isVps         Boolean     @default(false)
-  currentStatus String      // "Joomla -> Astro/Payload migracija. Test aktivan na VPS."
-  stage         String      @default("IN_PROGRESS") // BACKLOG, IN_PROGRESS, WAITING_VPS, PRODUCTION, MAINTENANCE
-  priority      String      @default("NORMAL")      // URGENT, HIGH, NORMAL, LOW
-  progress      Int         @default(0)             // 0 - 100 %
-  price         Float?      // npr. 550.00
-  isPaid        Boolean     @default(false)         // PLAĆENO (true) ili NIJE PLAĆENO (false)
-  docUrl        String?     // Link na Google Doc / Drive specifikaciju
-  devDevice     String      @default("WORKSTATION") // LAPTOP, WORKSTATION
-  hasGitBackup  Boolean     @default(true)
-  hasCicd       Boolean     @default(false)         // Webhook s Coolifyjem
-  notes         String?     // Markdown/tekst za sve tehničke detalje, portove, Coolify UUID, linkove
-  isArchived    Boolean     @default(false)
-  timeLogs      TimeLog[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  domain         String      // Glavna domena (npr. "marcopolosport.com") - mora biti editabilno
+  altDomains     String?     // Alternativne/dodatne domene (npr. "mokalo.hr / wifi-korcula.com")
+  client         String      // Naziv klijenta (npr. "Marko Polo Sport") - mora biti editabilno
+  techStack      String      // npr. "Astro, Payload CMS", "Next.js"
+  projectType    String      @default("WEB") // "WEB", "HARDWARE_IOT", "MAINTENANCE"
+
+  // Hosting infrastruktura
+  hosting        String      @default("VPS") // "VPS" ili "TOTOHOST"
+  isVps          Boolean     @default(true) // Izvedeni pokazatelj iz hostinga
+  cpanelUser     String?     // Korisničko ime na cPanelu (npr. "pontacom", "gmkorcul")
+  diskUsageMb    Int?        // Zauzeće diska u MB iz WHM-a
+
+  currentStatus  String      // Opis faze rada (npr. "Funkcionalni test na VPS aktivan")
+  stage          String      @default("IN_PROGRESS") // "BACKLOG", "IN_PROGRESS", "WAITING_VPS", "PRODUCTION", "MAINTENANCE"
+  priority       String      @default("NORMAL")      // "URGENT", "HIGH", "NORMAL", "LOW"
+  progress       Int         @default(0)             // 0 - 100 %
+
+  // Razdvojene financije
+  devPrice       Float?      @default(0.0) // Cijena izrade ili redizajna (€)
+  isDevPaid      Boolean     @default(false) // Je li izrada plaćena
+  hostingPrice   Float?      @default(0.0) // Godišnja naknada za hosting/domenu (€)
+  isHostingPaid  Boolean     @default(false) // Je li hosting plaćen
+
+  // Vremenski markeri (Lifecycle)
+  setupDate      DateTime?   // Datum prvog setupa na serveru (točan DateTime)
+  deadlineDate   DateTime?   // Rok isporuke projekta
+  lastUpdateDate DateTime    @default(now()) // Datum zadnjeg commit-a / rada
+
+  // Dokumentacija i detaljne opaske
+  docUrl         String?     // Link na Google Docs / Drive specifikaciju
+  isArchived     Boolean     @default(false)
+  notes          String?     // Markdown/tekst za interne konfiguracije, portove, bilješke
+
+  // Algorand ASA integracija (samo za detaljni prikaz, NE na dashboard pločici)
+  asaId          String?     // Asset ID na Algorand blockchainu
+  asaExplorerUrl String?     // Link na explorer (npr. Allo, Pera Explorer)
+
+  // Okruženje i automatizacija
+  devDevice      String      @default("WORKSTATION") // "LAPTOP" ili "WORKSTATION"
+  hasGitBackup   Boolean     @default(true)
+  hasCicd        Boolean     @default(false)         // Je li aktivan Coolify webhook
+
+  timeLogs       TimeLog[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model PotentialLead {
+  id             String      @id @default(cuid())
+  title          String      // Radni naziv projekta (npr. "Web shop uljara")
+  clientName     String      // Kontakt osoba / naziv OPG-a
+  estimatedValue Float?      // Procijenjeni iznos posla (€)
+  probability    Int         @default(50) // Vjerojatnost realizacije (0 - 100 %)
+  status         String      @default("INQUIRY") // "INQUIRY", "PROPOSAL_SENT", "NEGOTIATION", "WON", "LOST"
+  notes          String?     // Bilješke s inicijalnog razgovora
+  targetDate     DateTime?   // Očekivani početak radova
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 }
 
 model TimeLog {

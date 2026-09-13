@@ -4,30 +4,21 @@ import { DashboardContainer } from "@/components/DashboardContainer";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [projects, rawSettings] = await Promise.all([
-    prisma.project.findMany({
-      include: {
-        timeLogs: {
-          orderBy: { createdAt: "desc" },
-        },
+  const projects = await prisma.project.findMany({
+    include: {
+      timeLogs: {
+        orderBy: { createdAt: "desc" },
       },
-      orderBy: [
-        { priority: "asc" },
-        { updatedAt: "desc" },
-      ],
-    }),
-    prisma.systemSetting.findMany(),
-  ]);
-
-  const systemSettings: Record<string, string> = {};
-  rawSettings.forEach((s) => {
-    systemSettings[s.key] = s.value;
+    },
+    orderBy: [
+      { priority: "asc" },
+      { updatedAt: "desc" },
+    ],
   });
 
-  return (
-    <DashboardContainer
-      projects={projects as any}
-      systemSettings={systemSettings}
-    />
-  );
+  const leads = await prisma.potentialLead.findMany({
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+  });
+
+  return <DashboardContainer projects={projects} leads={leads} />;
 }
