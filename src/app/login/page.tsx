@@ -14,16 +14,14 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#f6f8f5]">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-6">
-          <div className="relative w-32 h-24 rounded-xl overflow-hidden border border-[#cfded0] shadow-sm flex items-center justify-center bg-white p-1">
-            <Image
-              src="/olead_logo.jpg"
-              alt="OleaD Logo"
-              width={128}
-              height={96}
-              className="w-full h-full object-contain rounded-lg"
-              priority
-            />
-          </div>
+          <Image
+            src="/icon_transparent.png"
+            alt="OleaD"
+            width={72}
+            height={96}
+            className="h-20 w-auto object-contain"
+            priority
+          />
         </div>
 
         <div className="cockpit-card rounded-2xl p-6 bg-white border border-[#d2dfd0] shadow-sm relative overflow-hidden">
@@ -40,7 +38,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-[11px] font-mono text-[#7a8e7d] mt-4">
-          OleaD Board (ODB) v2.4 • code by olead.hr
+          OleaD Board (ODB) v2.5 • code by olead.hr
         </p>
       </div>
     </div>

@@ -69,16 +69,14 @@ export function Header({
           <div className="flex items-center justify-between sm:justify-start gap-4">
             <div className="flex items-center gap-3">
               {/* OleaD Logo */}
-              <div className="relative w-32 h-24 rounded-xl overflow-hidden border border-[#cfded0] shadow-sm flex items-center justify-center bg-white p-1">
-                <Image
-                  src="/icon_transparent.png"
-                  alt="OleaD Logo"
-                  width={128}
-                  height={96}
-                  className="w-full h-full object-contain rounded-lg"
-                  priority
-                />
-              </div>
+              <Image
+                src="/olead_logo.jpg"
+                alt="OleaD"
+                width={128}
+                height={64}
+                className="h-14 w-auto object-contain"
+                priority
+              />
             </div>
 
             {/* Time & Date Display */}

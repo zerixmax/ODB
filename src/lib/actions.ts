@@ -283,7 +283,7 @@ export async function updateProjectStatusText(id: string, currentStatus: string)
   return { success: true };
 }
 
-// Create new project with V2.4 fields
+// Create new project with V2.5 fields
 export async function createProject(formData: FormData) {
   const domain = formData.get("domain") as string;
   const altDomains = (formData.get("altDomains") as string) || null;
@@ -356,7 +356,7 @@ export async function createProject(formData: FormData) {
   return { success: true };
 }
 
-// Update existing project with V2.4 fields
+// Update existing project with V2.5 fields
 export async function updateProject(id: string, formData: FormData) {
   const data: ProjectBasicsInput = {};
   const stringKeys = [
