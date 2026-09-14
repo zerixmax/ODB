@@ -68,10 +68,10 @@ export function Header({
           {/* Logo & Time */}
           <div className="flex items-center justify-between sm:justify-start gap-4">
             <div className="flex items-center gap-3">
-              {/* OleaD Logo Image */}
+              {/* OleaD Logo */}
               <div className="relative w-32 h-24 rounded-xl overflow-hidden border border-[#cfded0] shadow-sm flex items-center justify-center bg-white p-1">
                 <Image
-                  src="/olead_logo.jpg"
+                  src="/icon_transparent.png"
                   alt="OleaD Logo"
                   width={128}
                   height={96}
