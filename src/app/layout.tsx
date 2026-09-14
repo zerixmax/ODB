@@ -1,11 +1,30 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+export const viewport: Viewport = {
+  themeColor: "#525928",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "OleaD Board (ODB) | Executive Dev Cockpit",
-  description: "Operativni dashboard za praćenje statusa projekata, radnih sati, VPS migracija i financijskih ciljeva.",
+  title: "OleaD",
+  description: "Codex non verba - Digitalna rješenja i AgroTech inovacije.",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/olead_logo.jpg",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    title: "OleaD",
+    description: "Codex non verba - Digitalna rješenja i AgroTech",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
 };
 
@@ -22,3 +41,4 @@ export default function RootLayout({
     </html>
   );
 }
+

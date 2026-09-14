@@ -18,7 +18,8 @@ import {
   Server,
   Receipt,
   FileCode2,
-  ExternalLinkIcon
+  ExternalLinkIcon,
+  LogOut
 } from "lucide-react";
 import { 
   quickAddTimeLog, 
@@ -35,6 +36,7 @@ import {
   updateProjectStatusText,
   updateProjectBasics
 } from "@/lib/actions";
+import { logout } from "@/lib/auth-actions";
 import { formatCurrency, formatDateTimeFull, formatDiskUsage } from "@/lib/utils";
 import { ProjectData } from "@/lib/types";
 import confetti from "canvas-confetti";
@@ -255,6 +257,15 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
             <span className="font-mono text-xs font-bold text-[#a07400]">
               CODEX NON VERBA
             </span>
+            <form action={logout}>
+              <button
+                type="submit"
+                title="Odjava"
+                className="p-1.5 rounded-lg text-[#9a3b28] hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </form>
           </div>
         </div>
       </header>

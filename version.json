@@ -1,9 +1,9 @@
 {
   "name": "odb-dashboard",
-  "version": "2.2.0",
+  "version": "2.4.0",
   "title": "OleaD Board (ODB)",
-  "codename": "V2.2 – Pipeline, WHM & Financije",
-  "releaseDate": "2026-09-13",
+  "codename": "V2.4 – Autentikacija, PWA Set & Branding",
+  "releaseDate": "2026-09-14",
   "author": "Ivo Cetinić, OleaD",
   "motto": "CODEX NON VERBA",
   "repository": "https://github.com/zerixmax/ODB.git"

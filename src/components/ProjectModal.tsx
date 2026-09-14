@@ -33,7 +33,7 @@ export function ProjectModal({ isOpen, projectToEdit, onClose }: ProjectModalPro
             </div>
             <div>
               <h3 className="font-extrabold text-[#162418] text-base tracking-tight">
-                {isEditing ? `Uredi projekt: ${projectToEdit.domain}` : "Novi OleaD Projekt (V2.2)"}
+                {isEditing ? `Uredi projekt: ${projectToEdit.domain}` : "Novi OleaD Projekt (V2.4)"}
               </h3>
               <p className="text-xs text-[#6d8270]">
                 {isEditing ? "Ažurirajte tehničke specifikacije, hosting, status naplate i bilješke" : "Dodavanje novog projekta s hostingom i opaskama"}

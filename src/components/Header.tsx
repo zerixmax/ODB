@@ -8,9 +8,11 @@ import {
   Coins, 
   Server, 
   Plus, 
-  Timer
+  Timer,
+  LogOut
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { logout } from "@/lib/auth-actions";
 
 interface HeaderProps {
   onOpenNewProject: () => void;
@@ -158,6 +160,18 @@ export function Header({
                 <Plus className="w-4 h-4 stroke-[3]" />
                 <span>Novi Projekt</span>
               </button>
+
+              {/* Logout */}
+              <form action={logout}>
+                <button
+                  type="submit"
+                  title="Odjava"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#faf6f5] hover:bg-rose-50 border border-[#ecdad6] text-xs font-bold text-[#9a3b28] hover:text-rose-700 transition-all cursor-pointer active:scale-95"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden xl:inline">Odjava</span>
+                </button>
+              </form>
             </div>
 
           </div>

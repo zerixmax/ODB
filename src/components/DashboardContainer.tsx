@@ -375,7 +375,7 @@ export function DashboardContainer({ projects, leads }: DashboardContainerProps)
             <span className="font-mono font-bold text-[#a07400]">CODEX NON VERBA</span>
             <span>•</span>
             <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#eef5eb] text-[#4d7328] border border-[#d2e5ca]">
-              v2.2 Cockpit
+              v2.4 Cockpit
             </span>
             <span>•</span>
             <a

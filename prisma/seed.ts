@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding OleaD Board (ODB) V2.2 database with WHM setup dates, hosting and payment status...");
+  console.log("Seeding OleaD Board (ODB) V2.4 database with WHM setup dates, hosting and payment status...");
 
   // Clear existing data
   await prisma.timeLog.deleteMany();
@@ -560,7 +560,7 @@ async function main() {
     data: leadsData,
   });
 
-  console.log(`Seeded ${projectsData.length} OleaD V2.2 projects and ${leadsData.length} potential leads successfully!`);
+  console.log(`Seeded ${projectsData.length} OleaD V2.4 projects and ${leadsData.length} potential leads successfully!`);
 }
 
 main()

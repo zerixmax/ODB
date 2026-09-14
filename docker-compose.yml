@@ -10,6 +10,10 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/dev.db
+      # POSTAVI PRIJE DEPLOYA (vidi .env): AUTH_USER, AUTH_PASSWORD, SESSION_SECRET
+      - AUTH_USER=${AUTH_USER:-olead}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-}
+      - SESSION_SECRET=${SESSION_SECRET:-}
     volumes:
       - odb-data:/app/data
 
