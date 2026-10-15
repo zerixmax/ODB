@@ -32,6 +32,39 @@ export async function quickAddTimeLog(projectId: string, hours: number, descript
   return { success: true };
 }
 
+// Spremanje završene sesije rada iz live brojača / štoperice
+export async function saveWorkSessionLog(projectId: string, totalSeconds: number, description?: string) {
+  if (!projectId || totalSeconds <= 0) {
+    throw new Error("Neispravan projekt ili utrošeno vrijeme");
+  }
+
+  // Pretvori sekunde u decimalne sate s 2 decimale (minimalno 0.02h ~ 1 min)
+  const calculatedHours = Math.max(0.02, Math.round((totalSeconds / 3600) * 100) / 100);
+  const totalMinutes = Math.max(1, Math.round(totalSeconds / 60));
+
+  const defaultDesc = totalMinutes >= 60 
+    ? `Aktivni rad (${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m)`
+    : `Aktivni rad (${totalMinutes} min)`;
+
+  await prisma.timeLog.create({
+    data: {
+      projectId,
+      hours: calculatedHours,
+      description: description?.trim() || defaultDesc,
+    },
+  });
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { lastUpdateDate: new Date() },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true, hours: calculatedHours, minutes: totalMinutes };
+}
+
+
 export async function deleteTimeLog(id: string, projectId?: string) {
   await prisma.timeLog.delete({
     where: { id },
@@ -283,7 +316,7 @@ export async function updateProjectStatusText(id: string, currentStatus: string)
   return { success: true };
 }
 
-// Create new project with V2.5 fields
+// Create new project with V2.6 fields
 export async function createProject(formData: FormData) {
   const domain = formData.get("domain") as string;
   const altDomains = (formData.get("altDomains") as string) || null;
@@ -356,7 +389,7 @@ export async function createProject(formData: FormData) {
   return { success: true };
 }
 
-// Update existing project with V2.5 fields
+// Update existing project with V2.6 fields
 export async function updateProject(id: string, formData: FormData) {
   const data: ProjectBasicsInput = {};
   const stringKeys = [

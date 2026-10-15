@@ -38,7 +38,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-[11px] font-mono text-[#7a8e7d] mt-4">
-          OleaD Board (ODB) v2.5 • code by olead.hr
+          OleaD Board (ODB) v2.6 • code by olead.hr
         </p>
       </div>
     </div>

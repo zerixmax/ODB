@@ -85,3 +85,36 @@ export function formatDiskUsage(mb: number | null | undefined): string {
   if (mb < 1024) return `${Math.round(mb)} MB`;
   return `${(mb / 1024).toFixed(1)} GB`;
 }
+
+export function formatHoursAndMinutes(hours: number | null | undefined): string {
+  if (!hours || hours <= 0) return "0 min";
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+export function formatSecondsToTimer(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(safeSeconds / 3600);
+  const m = Math.floor((safeSeconds % 3600) / 60);
+  const s = safeSeconds % 60;
+  if (h > 0) {
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+export function formatSecondsToReadable(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const m = Math.floor(safeSeconds / 60);
+  const s = safeSeconds % 60;
+  if (m === 0) return `${s}s`;
+  const h = Math.floor(m / 60);
+  const remM = m % 60;
+  if (h === 0) return `${m} min`;
+  return `${h}h ${remM}m`;
+}
+

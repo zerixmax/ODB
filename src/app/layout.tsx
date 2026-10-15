@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { AppProviders } from "@/components/AppProviders";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,9 +38,10 @@ export default function RootLayout({
   return (
     <html lang="hr">
       <body className="min-h-screen bg-[#f7f9f6] text-[#1c281e] antialiased selection:bg-[#5d8534] selection:text-white">
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
 }
+
 

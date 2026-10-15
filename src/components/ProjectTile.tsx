@@ -18,7 +18,11 @@ import {
   CheckCircle2,
   AlertCircle,
   FileCode2,
-  ChevronRight
+  ChevronRight,
+  Timer,
+  Pause,
+  Play,
+  Check
 } from "lucide-react";
 import { 
   quickAddTimeLog, 
@@ -38,8 +42,11 @@ import {
   formatYearOnly, 
   formatRelativeTime, 
   formatDate, 
-  daysUntil 
+  daysUntil,
+  formatHoursAndMinutes,
+  formatSecondsToTimer
 } from "@/lib/utils";
+import { useWorkTimer } from "./WorkTimerContext";
 import { ProjectData } from "@/lib/types";
 import confetti from "canvas-confetti";
 
@@ -50,8 +57,20 @@ interface ProjectTileProps {
 
 export function ProjectTile({ project, onEdit }: ProjectTileProps) {
   const [isPending, startTransition] = useTransition();
+  const { 
+    isProjectRunning, 
+    activeTimer, 
+    elapsedSeconds, 
+    pauseTimer, 
+    resumeTimer, 
+    stopAndSave, 
+    isSaving, 
+    openStartModal 
+  } = useWorkTimer();
 
+  const isThisRunning = isProjectRunning(project.id);
   const totalLoggedHours = project.timeLogs.reduce((sum, log) => sum + log.hours, 0);
+
 
   const handleQuickTime = (hours: number, desc?: string) => {
     startTransition(async () => {
@@ -191,13 +210,16 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
   return (
     <div
       className={`cockpit-card rounded-2xl p-5 border flex flex-col justify-between transition-all relative overflow-hidden group shadow-xs ${
-        project.priority === "URGENT"
+        isThisRunning
+          ? "border-[#527a29] ring-2 ring-[#527a29]/30 shadow-md bg-white"
+          : project.priority === "URGENT"
           ? "border-rose-300 bg-rose-50/20 hover:border-rose-400"
           : isVpsHosting
           ? "border-[#d0dfce] hover:border-[#96bc8e]"
           : "border-[#e0e8de] hover:border-[#b8ccb4]"
       } ${project.isArchived ? "opacity-50 grayscale bg-slate-50" : "bg-white"}`}
     >
+
       {/* Top Header: Domain link to /projects/[id], Client, VPS/Hosting & Device Badges */}
       <div>
         <div className="flex items-start justify-between gap-3">
@@ -538,18 +560,75 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
           <div className="text-xs font-mono text-right">
             <span className="text-[#6d8270] text-[10px] block uppercase font-bold">Utrošeno</span>
             <span className="text-[#2b4c13] font-extrabold text-xs">
-              {totalLoggedHours > 0 ? `${totalLoggedHours}h rada` : "0h"}
+              {totalLoggedHours > 0 ? formatHoursAndMinutes(totalLoggedHours) : "0 min"}
             </span>
           </div>
         </div>
 
-        {/* Quick Time Buttons (+15m, +30m, +1h) & Actions */}
+        {/* Active Timer Live Strip on Card */}
+        {isThisRunning && activeTimer && (
+          <div className="mt-3 p-2.5 rounded-xl bg-[#eef5eb] border border-[#527a29] flex items-center justify-between gap-2 animate-in fade-in">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={`w-2 h-2 rounded-full ${activeTimer.isRunning ? "bg-[#527a29] animate-pulse" : "bg-amber-500"}`} />
+              <span className="font-mono text-xs font-black text-[#162418]">
+                {formatSecondsToTimer(elapsedSeconds)}
+              </span>
+              <span className="text-[10px] text-[#4d7328] font-bold truncate max-w-[100px] sm:max-w-[130px]">
+                {activeTimer.description || "Aktivni rad"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {activeTimer.isRunning ? (
+                <button
+                  onClick={pauseTimer}
+                  className="p-1 rounded-md bg-white border border-[#c4dcbc] text-[#35521b] hover:bg-[#dfedd7] transition-colors cursor-pointer"
+                  title="Pauziraj brojač"
+                >
+                  <Pause className="w-3 h-3" />
+                </button>
+              ) : (
+                <button
+                  onClick={resumeTimer}
+                  className="p-1 rounded-md bg-[#527a29] text-white hover:bg-[#608e2f] transition-colors cursor-pointer"
+                  title="Nastavi brojač"
+                >
+                  <Play className="w-3 h-3 fill-white" />
+                </button>
+              )}
+              <button
+                onClick={() => stopAndSave()}
+                disabled={isSaving}
+                className="px-2 py-0.5 rounded-md bg-[#527a29] hover:bg-[#608e2f] text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer shadow-xs disabled:opacity-50"
+                title="Završi sesiju i spremi radno vrijeme"
+              >
+                <Check className="w-3 h-3 stroke-[3]" />
+                <span>{isSaving ? "..." : "Spremi"}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Time Buttons (+15m, +30m, +1h), Live Timer Button & Actions */}
         <div className="mt-3 flex items-center justify-between gap-1.5">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
+            {/* Live Stopwatch / Counter Trigger */}
+            <button
+              onClick={() => openStartModal(project.id, project.domain, project.domain.includes("ponta") ? "Seljenje na VPS" : "Rad na projektu")}
+              className={`px-2 py-1 rounded-lg border text-[11px] font-mono font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                isThisRunning
+                  ? "bg-[#527a29] text-white border-[#527a29] animate-pulse"
+                  : "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800"
+              }`}
+              title="Pokreni brojač radnog vremena (štopericu)"
+            >
+              <Timer className="w-3.5 h-3.5" />
+              <span>{isThisRunning ? "Brojač radi" : "⏱️ Brojač"}</span>
+            </button>
+
             <button
               onClick={() => handleQuickTime(0.25)}
               disabled={isPending}
-              className="px-2.5 py-1 rounded-lg bg-[#eef5eb] hover:bg-[#e0edd9] border border-[#c4dcbc] text-[11px] font-mono font-bold text-[#35521b] transition-all cursor-pointer active:scale-95 shadow-2xs"
+              className="px-2 py-1 rounded-lg bg-[#eef5eb] hover:bg-[#e0edd9] border border-[#c4dcbc] text-[11px] font-mono font-bold text-[#35521b] transition-all cursor-pointer active:scale-95 shadow-2xs"
               title="Dodaj 15 minuta rada"
             >
               +15m
@@ -557,7 +636,7 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
             <button
               onClick={() => handleQuickTime(0.5)}
               disabled={isPending}
-              className="px-2.5 py-1 rounded-lg bg-[#eef5eb] hover:bg-[#e0edd9] border border-[#c4dcbc] text-[11px] font-mono font-bold text-[#35521b] transition-all cursor-pointer active:scale-95 shadow-2xs"
+              className="px-2 py-1 rounded-lg bg-[#eef5eb] hover:bg-[#e0edd9] border border-[#c4dcbc] text-[11px] font-mono font-bold text-[#35521b] transition-all cursor-pointer active:scale-95 shadow-2xs"
               title="Dodaj 30 minuta rada"
             >
               +30m
@@ -565,12 +644,13 @@ export function ProjectTile({ project, onEdit }: ProjectTileProps) {
             <button
               onClick={() => handleQuickTime(1.0)}
               disabled={isPending}
-              className="px-2.5 py-1 rounded-lg bg-[#eef5eb] hover:bg-[#e0edd9] border border-[#c4dcbc] text-[11px] font-mono font-bold text-[#35521b] transition-all cursor-pointer active:scale-95 shadow-2xs"
+              className="px-2 py-1 rounded-lg bg-[#eef5eb] hover:bg-[#e0edd9] border border-[#c4dcbc] text-[11px] font-mono font-bold text-[#35521b] transition-all cursor-pointer active:scale-95 shadow-2xs"
               title="Dodaj 1 sat rada"
             >
               +1h
             </button>
           </div>
+
 
           <div className="flex items-center gap-1">
             {/* View Project Details */}

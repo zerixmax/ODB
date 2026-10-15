@@ -1,9 +1,9 @@
 {
   "name": "odb-dashboard",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "title": "OleaD Board (ODB)",
-  "codename": "V2.5 – Header logo & Branding dotjerivanje",
-  "releaseDate": "2026-09-14",
+  "codename": "V2.6 – Interaktivni HTML Runbook / Auto-Sync most",
+  "releaseDate": "2026-10-15",
   "author": "Ivo Cetinić, OleaD",
   "motto": "CODEX NON VERBA",
   "repository": "https://github.com/zerixmax/ODB.git"

@@ -52,6 +52,10 @@ model Project {
   hasGitBackup   Boolean     @default(true)
   hasCicd        Boolean     @default(false)         // Je li aktivan Coolify webhook
 
+  // Interaktivni HTML Runbook / Master TODO
+  todoHtml       String?     // Spremljeni samostalni HTML dokument ili JSON struktura
+  todoState      String?     // JSON stanje kvačica, npr. {"t1": true, "t2": true, "t5": false}
+
   timeLogs       TimeLog[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt

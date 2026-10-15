@@ -19,7 +19,11 @@ import {
   Receipt,
   FileCode2,
   ExternalLinkIcon,
-  LogOut
+  LogOut,
+  Timer,
+  Play,
+  Pause,
+  Check
 } from "lucide-react";
 import { 
   quickAddTimeLog, 
@@ -37,9 +41,18 @@ import {
   updateProjectBasics
 } from "@/lib/actions";
 import { logout } from "@/lib/auth-actions";
-import { formatCurrency, formatDateTimeFull, formatDiskUsage } from "@/lib/utils";
+import { 
+  formatCurrency, 
+  formatDateTimeFull, 
+  formatDiskUsage, 
+  formatHoursAndMinutes, 
+  formatSecondsToTimer, 
+  formatSecondsToReadable 
+} from "@/lib/utils";
+import { useWorkTimer } from "@/components/WorkTimerContext";
 import { ProjectData } from "@/lib/types";
 import confetti from "canvas-confetti";
+
 
 interface ProjectDetailClientProps {
   project: ProjectData;
@@ -47,8 +60,21 @@ interface ProjectDetailClientProps {
 
 export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
   const [isPending, startTransition] = useTransition();
+  const { 
+    isProjectRunning, 
+    activeTimer, 
+    elapsedSeconds, 
+    pauseTimer, 
+    resumeTimer, 
+    stopAndSave, 
+    isSaving, 
+    openStartModal 
+  } = useWorkTimer();
+
+  const isThisRunning = isProjectRunning(project.id);
   const [notes, setNotes] = useState(project.notes || "");
   const [notesSaved, setNotesSaved] = useState(false);
+
   
   // Quick manual log form state
   const [manualHours, setManualHours] = useState("");
@@ -907,14 +933,92 @@ export function ProjectDetailClient({ project }: ProjectDetailClientProps) {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-[#162418]">Evidencija Radnih Sati</h3>
-                    <p className="text-[10px] text-[#6d8270]">Utrošeno ukupno: <span className="font-bold text-[#2d4d14]">{totalLoggedHours.toFixed(1)}h</span></p>
+                    <p className="text-[10px] text-[#6d8270]">
+                      Utrošeno ukupno: <span className="font-bold text-[#2d4d14]">{formatHoursAndMinutes(totalLoggedHours)}</span>{" "}
+                      <span className="text-[#879989]">({totalLoggedHours.toFixed(1)}h)</span>
+                    </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Live Brojač / Štoperica Rada */}
+              <div className={`mt-3 p-3 rounded-xl border transition-all ${
+                isThisRunning 
+                  ? "bg-[#eef5eb] border-[#527a29] ring-1 ring-[#527a29]/30" 
+                  : "bg-[#f8faf7] border-[#d6e2d4]"
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#527a29] flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${isThisRunning && activeTimer?.isRunning ? "bg-[#527a29] animate-pulse" : isThisRunning ? "bg-amber-500" : "bg-slate-400"}`} />
+                    {isThisRunning ? (activeTimer?.isRunning ? "Štoperica aktivna" : "Štoperica pauzirana") : "Live Brojač / Štoperica"}
+                  </span>
+                  {isThisRunning && (
+                    <span className="text-xs font-mono font-bold text-[#527a29]">
+                      {formatSecondsToReadable(elapsedSeconds)}
+                    </span>
+                  )}
+                </div>
+
+                {isThisRunning && activeTimer ? (
+                  <div className="space-y-2.5">
+                    <div className="flex items-baseline justify-between">
+                      <span className="font-mono text-2xl font-black text-[#162418]">
+                        {formatSecondsToTimer(elapsedSeconds)}
+                      </span>
+                      <span className="text-xs font-medium text-[#4b604f] truncate max-w-[180px]">
+                        {activeTimer.description || "Rad na projektu"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {activeTimer.isRunning ? (
+                        <button
+                          onClick={pauseTimer}
+                          className="flex-1 py-1.5 rounded-lg bg-white hover:bg-[#dfedd7] border border-[#c4dcbc] text-xs font-bold text-[#35521b] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                        >
+                          <Pause className="w-3.5 h-3.5" />
+                          <span>Pauziraj</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={resumeTimer}
+                          className="flex-1 py-1.5 rounded-lg bg-[#527a29] hover:bg-[#608e2f] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-white" />
+                          <span>Nastavi</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => stopAndSave()}
+                        disabled={isSaving}
+                        className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-[#527a29] to-[#38541c] hover:from-[#608e2f] hover:to-[#446622] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>{isSaving ? "Spremam..." : "Završi i spremi"}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-[#5c7060]">
+                      Pokreni mjerenje rada na ovom projektu
+                    </span>
+                    <button
+                      onClick={() => openStartModal(project.id, project.domain, project.domain.includes("ponta") ? "Seljenje na VPS" : "Rad na projektu")}
+                      className="px-3 py-1.5 rounded-lg bg-[#527a29] hover:bg-[#608e2f] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>Pokreni štopericu</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Quick Add Sati (+15m, +30m, +1h) */}
               <div className="mt-3">
                 <span className="text-[10px] font-mono font-bold text-[#5c7060] uppercase block mb-1.5">Brzi unos:</span>
+
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => handleQuickTime(0.25)}
